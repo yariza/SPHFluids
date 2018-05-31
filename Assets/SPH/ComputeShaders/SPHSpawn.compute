@@ -1,0 +1,27 @@
+﻿#pragma kernel SPHSpawn
+
+#define THREADS_PER_GROUP 8
+
+float4x4 _transform;
+float3 _boundsMin;
+float3 _boundsSize;
+uint3 _dimensions;
+uint _offset;
+
+RWStructuredBuffer<float4> _positionBuffer;
+
+[numthreads(8, 8, 8)]
+void SPHSpawn (uint3 id : SV_DispatchThreadID)
+{
+    if (any(id >= _dimensions)) return;
+
+    float3 pos = ((float3)id) / ((float3)_dimensions);
+    pos = pos * _boundsSize + _boundsMin;
+    pos = mul(_transform, float4(pos, 1)).xyz;
+
+    uint index = id.x * _dimensions.y * _dimensions.z +
+                 id.y * _dimensions.z +
+                 id.z +
+                 _offset;
+    _positionBuffer[index] = float4(pos, 0);
+}
