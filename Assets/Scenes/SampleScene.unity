@@ -353,6 +353,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1248459695}
   - component: {fileID: 1248459694}
+  - component: {fileID: 1248459696}
   m_Layer: 0
   m_Name: SPH
   m_TagString: Untagged
@@ -372,10 +373,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _profile: {fileID: 11400000, guid: adc6426ad67a244f98f97b964ec01541, type: 2}
-  _material: {fileID: 2100000, guid: 25e6de9bcefe24b0eb5cc380fe9ce33a, type: 2}
   _spawnShader: {fileID: 7200000, guid: c3a2992df671349c1afd8df886c2d6be, type: 3}
   _initializeShader: {fileID: 7200000, guid: 3e3c76240ab1242abbaca244306f711f, type: 3}
-  _minimumShader: {fileID: 7200000, guid: 1be6eba9d42b94d959ba488bfa875755, type: 3}
+  _minMaxShader: {fileID: 7200000, guid: d29ed91550af34f0fa759c3116c93536, type: 3}
+  _minShader: {fileID: 7200000, guid: 1be6eba9d42b94d959ba488bfa875755, type: 3}
+  _maxShader: {fileID: 7200000, guid: d80aa12f3656742a0a1e3d7d07d6c920, type: 3}
 --- !u!4 &1248459695
 Transform:
   m_ObjectHideFlags: 0
@@ -389,6 +391,18 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1248459696
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1248459693}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d85e50403db274e7b8765a9d329bf9aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _material: {fileID: 2100000, guid: 25e6de9bcefe24b0eb5cc380fe9ce33a, type: 2}
 --- !u!1 &1300323038
 GameObject:
   m_ObjectHideFlags: 0

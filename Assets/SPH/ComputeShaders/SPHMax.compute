@@ -1,0 +1,76 @@
+#pragma kernel SPHMax
+
+StructuredBuffer<float4> _inputBuffer;
+RWStructuredBuffer<float4> _outputBuffer;
+uint _numParticles;
+uint _dispatchDim;
+
+#define GROUP_DIM_X 512
+
+float4 identity()
+{
+    return float4(-1.#INF, -1.#INF, -1.#INF, 0);
+}
+
+float4 reduce(float4 left, float4 right)
+{
+    return max(left, right);
+}
+
+groupshared float4 sdata[GROUP_DIM_X];
+
+[numthreads(GROUP_DIM_X, 1, 1)]
+void SPHMax(uint tid : SV_GroupIndex,
+            uint3 groupIdx : SV_GROUPID )
+{
+    uint i = groupIdx.x * (GROUP_DIM_X * 2) + tid;
+    uint dispatchSize = GROUP_DIM_X * _dispatchDim * 2;
+    sdata[tid] = identity();
+
+    while (i + GROUP_DIM_X < _numParticles) {
+        sdata[tid] = reduce(
+            sdata[tid],
+            reduce(_inputBuffer[i], _inputBuffer[i + GROUP_DIM_X])
+        );
+        i += dispatchSize;
+    }
+
+    if (i < _numParticles) {
+        sdata[tid] = reduce(
+            sdata[tid],
+            _inputBuffer[i]
+        );
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    if (GROUP_DIM_X >= 512) {
+        if (tid < 256) {
+            sdata[tid] = reduce(sdata[tid], sdata[tid + 256]);
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+    if (GROUP_DIM_X >= 256) {
+        if (tid < 128) {
+            sdata[tid] = reduce(sdata[tid], sdata[tid + 128]);
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+    if (GROUP_DIM_X >= 128) {
+        if (tid < 64) {
+            sdata[tid] = reduce(sdata[tid], sdata[tid + 64]);
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+    if (tid < 32) {
+        if (GROUP_DIM_X >= 64) sdata[tid] = reduce(sdata[tid], sdata[tid + 32]);
+        if (GROUP_DIM_X >= 32) sdata[tid] = reduce(sdata[tid], sdata[tid + 16]);
+        if (GROUP_DIM_X >= 16) sdata[tid] = reduce(sdata[tid], sdata[tid + 8]);
+        if (GROUP_DIM_X >= 8)  sdata[tid] = reduce(sdata[tid], sdata[tid + 4]);
+        if (GROUP_DIM_X >= 4)  sdata[tid] = reduce(sdata[tid], sdata[tid + 2]);
+        if (GROUP_DIM_X >= 2)  sdata[tid] = reduce(sdata[tid], sdata[tid + 1]);
+    }
+    if (tid == 0) {
+        _outputBuffer[groupIdx.x] = sdata[0];
+    }
+}

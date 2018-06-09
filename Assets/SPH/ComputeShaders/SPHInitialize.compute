@@ -12,11 +12,11 @@ StructuredBuffer<float4> _positionBuffer;
 
 RWStructuredBuffer<uint> _idBuffer;
 RWStructuredBuffer<int> _zIndexBuffer;
-StructuredBuffer<float4> _minimumPositionBuffer;
+StructuredBuffer<float4> _minBuffer;
 
 int getZIndex(float3 position)
 {
-	uint3 coord = asuint((int3)floor((position - _minimumPositionBuffer[0].xyz) / _gridSize));
+	uint3 coord = asuint((int3)floor((position - _minBuffer[0].xyz) / _gridSize));
 	coord = coord & ~(1 << 31);
 	// return coord.x;
 	return asint(mortonCode(coord));

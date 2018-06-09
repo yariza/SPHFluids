@@ -1,0 +1,123 @@
+#pragma kernel SPHMinMax
+
+StructuredBuffer<float4> _inputBuffer;
+RWStructuredBuffer<float4> _minBuffer;
+RWStructuredBuffer<float4> _maxBuffer;
+uint _numParticles;
+uint _dispatchDim;
+
+#define GROUP_DIM_X 512
+
+float4 minIdentity()
+{
+    return float4(1.#INF, 1.#INF, 1.#INF, 0);
+}
+
+float4 minReduce(float4 left, float4 right)
+{
+    return min(left, right);
+}
+
+float4 maxIdentity()
+{
+    return float4(-1.#INF, -1.#INF, -1.#INF, 0);
+}
+
+float4 maxReduce(float4 left, float4 right)
+{
+    return max(left, right);
+}
+
+groupshared float4 sMinData[GROUP_DIM_X];
+groupshared float4 sMaxData[GROUP_DIM_X];
+
+[numthreads(GROUP_DIM_X, 1, 1)]
+void SPHMinMax(uint tid : SV_GroupIndex,
+            uint3 groupIdx : SV_GROUPID )
+{
+    uint i = groupIdx.x * (GROUP_DIM_X * 2) + tid;
+    uint dispatchSize = GROUP_DIM_X * _dispatchDim * 2;
+    sMinData[tid] = minIdentity();
+    sMaxData[tid] = maxIdentity();
+
+    while (i + GROUP_DIM_X < _numParticles) {
+        float4 smin = sMinData[tid];
+        float4 smax = sMaxData[tid];
+        float4 input1 = _inputBuffer[i];
+        float4 input2 = _inputBuffer[i + GROUP_DIM_X];
+        sMinData[tid] = minReduce(
+            smin,
+            minReduce(input1, input2)
+        );
+        sMaxData[tid] = maxReduce(
+            smax,
+            maxReduce(input1, input2)
+        );
+        i += dispatchSize;
+    }
+
+    if (i < _numParticles) {
+        float4 input = _inputBuffer[i];
+        sMinData[tid] = minReduce(
+            sMinData[tid],
+            input
+        );
+        sMaxData[tid] = maxReduce(
+            sMaxData[tid],
+            input
+        );
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    if (GROUP_DIM_X >= 512) {
+        if (tid < 256) {
+            sMinData[tid] = minReduce(sMinData[tid], sMinData[tid + 256]);
+            sMaxData[tid] = maxReduce(sMaxData[tid], sMaxData[tid + 256]);
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+    if (GROUP_DIM_X >= 256) {
+        if (tid < 128) {
+            sMinData[tid] = minReduce(sMinData[tid], sMinData[tid + 128]);
+            sMaxData[tid] = maxReduce(sMaxData[tid], sMaxData[tid + 128]);
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+    if (GROUP_DIM_X >= 128) {
+        if (tid < 64) {
+            sMinData[tid] = minReduce(sMinData[tid], sMinData[tid + 64]);
+            sMaxData[tid] = maxReduce(sMaxData[tid], sMaxData[tid + 64]);
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+    if (tid < 32) {
+        if (GROUP_DIM_X >= 64) {
+            sMinData[tid] = minReduce(sMinData[tid], sMinData[tid + 32]);
+            sMaxData[tid] = maxReduce(sMaxData[tid], sMaxData[tid + 32]);
+        }
+        if (GROUP_DIM_X >= 32) {
+            sMinData[tid] = minReduce(sMinData[tid], sMinData[tid + 16]);
+            sMaxData[tid] = maxReduce(sMaxData[tid], sMaxData[tid + 16]);
+        }
+        if (GROUP_DIM_X >= 16) {
+            sMinData[tid] = minReduce(sMinData[tid], sMinData[tid + 8]);
+            sMaxData[tid] = maxReduce(sMaxData[tid], sMaxData[tid + 8]);
+        }
+        if (GROUP_DIM_X >= 8) {
+            sMinData[tid] = minReduce(sMinData[tid], sMinData[tid + 4]);
+            sMaxData[tid] = maxReduce(sMaxData[tid], sMaxData[tid + 4]);
+        }
+        if (GROUP_DIM_X >= 4) {
+            sMinData[tid] = minReduce(sMinData[tid], sMinData[tid + 2]);
+            sMaxData[tid] = maxReduce(sMaxData[tid], sMaxData[tid + 2]);
+        }
+        if (GROUP_DIM_X >= 2) {
+            sMinData[tid] = minReduce(sMinData[tid], sMinData[tid + 1]);
+            sMaxData[tid] = maxReduce(sMaxData[tid], sMaxData[tid + 1]);
+        }
+    }
+    if (tid == 0) {
+        _minBuffer[groupIdx.x] = sMinData[0];
+    }
+}
