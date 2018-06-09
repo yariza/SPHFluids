@@ -1,0 +1,37 @@
+#pragma kernel SPHInitialize
+
+#include "SPHMortonCode.cginc"
+
+#define MAX_PARTICLES 1 << 20
+#define THREAD_X 256
+
+float _gridSize;
+uint _numParticles;
+
+StructuredBuffer<float4> _positionBuffer;
+
+RWStructuredBuffer<uint> _idBuffer;
+RWStructuredBuffer<int> _zIndexBuffer;
+StructuredBuffer<float4> _minimumPositionBuffer;
+
+int getZIndex(float3 position)
+{
+	uint3 coord = asuint((int3)floor((position - _minimumPositionBuffer[0].xyz) / _gridSize));
+	coord = coord & ~(1 << 31);
+	// return coord.x;
+	return asint(mortonCode(coord));
+}
+
+[numthreads(THREAD_X, 1, 1)]
+void SPHInitialize (
+	uint3 id : SV_DispatchThreadID,
+	uint3 tid : SV_GroupThreadID)
+{
+	uint idx = id.x;
+
+	float3 position = _positionBuffer[idx].xyz;
+	uint zIndex = getZIndex(position);
+	
+	_idBuffer[idx] = idx;
+	_zIndexBuffer[idx] = zIndex;
+}

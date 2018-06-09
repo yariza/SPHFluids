@@ -1,6 +1,9 @@
 ﻿#pragma kernel SPHSpawn
 
-#define THREADS_PER_GROUP 8
+#define MAX_PARTICLES 1 << 20
+#define THREAD_X 8
+#define THREAD_Y 8
+#define THREAD_Z 8
 
 float4x4 _transform;
 float3 _boundsMin;
@@ -10,7 +13,7 @@ uint _offset;
 
 RWStructuredBuffer<float4> _positionBuffer;
 
-[numthreads(8, 8, 8)]
+[numthreads(THREAD_X, THREAD_Y, THREAD_Z)]
 void SPHSpawn (uint3 id : SV_DispatchThreadID)
 {
     if (any(id >= _dimensions)) return;
@@ -23,5 +26,7 @@ void SPHSpawn (uint3 id : SV_DispatchThreadID)
                  id.y * _dimensions.z +
                  id.z +
                  _offset;
+    if (index >= MAX_PARTICLES) return;
+
     _positionBuffer[index] = float4(pos, 0);
 }
