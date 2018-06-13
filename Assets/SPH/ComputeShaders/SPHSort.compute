@@ -1,0 +1,30 @@
+#pragma kernel SPHSort
+
+// more like swap positions because it assumes the key/index buffer is already sorted
+
+#define THREAD_X 512
+
+cbuffer Constants : register(b0)
+{
+    uint _numParticles;
+
+}
+
+StructuredBuffer<float4> _positionBuffer;
+ByteAddressBuffer _idZIndexBuffer;
+
+RWStructuredBuffer<float4> _sortedPositionBuffer;
+
+[numthreads(THREAD_X, 1, 1)]
+void SPHSort(
+	uint3 id : SV_DispatchThreadID,
+	uint3 tid : SV_GroupThreadID)
+{
+    uint idx = id.x;
+    if (idx >= _numParticles) return;
+
+    uint index = _idZIndexBuffer.Load(idx*8);
+
+    // uncoalesced read alert!!!
+    _sortedPositionBuffer[idx] = _positionBuffer[index];
+}

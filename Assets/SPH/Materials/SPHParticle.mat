@@ -71,10 +71,10 @@ Material:
     - _SrcBlend: 1
     - _UVSec: 0
     - _ZWrite: 1
-    - _scale: 5000
-    - _threshold: 5878.432
+    - _scale: 1000
+    - _threshold: 1
     m_Colors:
     - _Color: {r: 0.14117646, g: 0.66626, b: 0.8980392, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _color1: {r: 0.38679248, g: 0, b: 0, a: 1}
-    - _color2: {r: 0, g: 0, b: 0.4433962, a: 1}
+    - _color1: {r: 1, g: 0, b: 0, a: 1}
+    - _color2: {r: 0, g: 0, b: 1, a: 1}

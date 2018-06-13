@@ -289,13 +289,13 @@ Transform:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 806170411}
-  m_LocalRotation: {x: -0.39620855, y: 0.5484077, z: 0.13358518, w: 0.72417045}
+  m_LocalRotation: {x: -0.7520183, y: 0.14483976, z: 0.6360996, w: 0.094166465}
   m_LocalPosition: {x: 1.03, y: 0.4, z: 1.8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 1
-  m_LocalEulerAnglesHint: {x: -46.085003, y: 82.999, z: -20.34}
+  m_LocalEulerAnglesHint: {x: -19.02, y: -100.545006, z: 185.95299}
 --- !u!1 &903203252
 GameObject:
   m_ObjectHideFlags: 0
@@ -378,6 +378,9 @@ MonoBehaviour:
   _minMaxShader: {fileID: 7200000, guid: d29ed91550af34f0fa759c3116c93536, type: 3}
   _minShader: {fileID: 7200000, guid: 1be6eba9d42b94d959ba488bfa875755, type: 3}
   _maxShader: {fileID: 7200000, guid: d80aa12f3656742a0a1e3d7d07d6c920, type: 3}
+  _sortShader: {fileID: 7200000, guid: 246ac068de5df468da71b1d86915d8ef, type: 3}
+  _bitonicSort: {fileID: 11400000, guid: 950d8fc096c1e4ce0921bbf9428d4f7c, type: 2}
+  _skipSort: 0
 --- !u!4 &1248459695
 Transform:
   m_ObjectHideFlags: 0
@@ -433,8 +436,8 @@ MonoBehaviour:
   _material: {fileID: 2100000, guid: 25e6de9bcefe24b0eb5cc380fe9ce33a, type: 2}
   _propertyName: _threshold
   _type: 0
-  _period: 20
-  _outputRange: {x: 0, y: 6000}
+  _period: 40
+  _outputRange: {x: 0, y: 200000}
 --- !u!4 &1300323040
 Transform:
   m_ObjectHideFlags: 0

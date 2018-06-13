@@ -2,8 +2,12 @@
 
 StructuredBuffer<float4> _inputBuffer;
 RWStructuredBuffer<float4> _outputBuffer;
-uint _numParticles;
-uint _dispatchDim;
+
+cbuffer Constants : register(b0)
+{
+    uint _numParticles;
+    uint _dispatchDim;
+}
 
 #define GROUP_DIM_X 512
 

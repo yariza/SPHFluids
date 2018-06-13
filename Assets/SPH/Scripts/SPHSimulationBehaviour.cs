@@ -29,6 +29,12 @@ public class SPHSimulationBehaviour : MonoBehaviour
     [SerializeField]
     ComputeShader _maxShader;
 
+    [SerializeField]
+    ComputeShader _sortShader;
+
+    [SerializeField]
+    BitonicSort _bitonicSort;
+
     #endregion
 
     #region Private fields
@@ -42,18 +48,29 @@ public class SPHSimulationBehaviour : MonoBehaviour
 
     SPHSpawner[] _spawners;
 
-    ComputeBuffer _positionBuffer;
-    public ComputeBuffer positionBuffer
+    // position is triple-buffered
+    int _bufferIndex;
+    ComputeBuffer[] _positionBuffers = new ComputeBuffer[3];
+    ComputeBuffer inputPositionBuffer
     {
-        get { return _positionBuffer; }
+        get { return _positionBuffers[_bufferIndex]; }
+    }
+    public ComputeBuffer sortedPositionBuffer
+    {
+        get { return _positionBuffers[(_bufferIndex + 1) % 3]; }
     }
     ComputeBuffer _minBuffer;
     ComputeBuffer _maxBuffer;
-    ComputeBuffer _idBuffer;
-    ComputeBuffer _zIndexBuffer;
-    public ComputeBuffer zIndexBuffer
+    // ComputeBuffer _idBuffer;
+    // ComputeBuffer _zIndexBuffer;
+    // public ComputeBuffer zIndexBuffer
+    // {
+        // get { return _zIndexBuffer; }
+    // }
+    ComputeBuffer _idZIndexBuffer;
+    public ComputeBuffer idZIndexBuffer
     {
-        get { return _zIndexBuffer; }
+        get { return _idZIndexBuffer; }
     }
     ComputeBuffer _gridBuffer;
 
@@ -72,12 +89,14 @@ public class SPHSimulationBehaviour : MonoBehaviour
 
     int _idPositionBuffer;
     int _idGridBuffer;
-    int _idIdBuffer;
-    int _idZIndexBuffer;
+    // int _idIdBuffer;
+    // int _idZIndexBuffer;
+    int _idIdZIndexBuffer;
     int _idInputBuffer;
     int _idOutputBuffer;
     int _idMinBuffer;
     int _idMaxBuffer;
+    int _idSortedPositionBuffer;
 
     #endregion
 
@@ -103,21 +122,26 @@ public class SPHSimulationBehaviour : MonoBehaviour
 
         _idPositionBuffer = Shader.PropertyToID("_positionBuffer");
         _idGridBuffer = Shader.PropertyToID("_gridBuffer");
-        _idIdBuffer = Shader.PropertyToID("_idBuffer");
-        _idZIndexBuffer = Shader.PropertyToID("_zIndexBuffer");
+        _idIdZIndexBuffer = Shader.PropertyToID("_idZIndexBuffer");
+        // _idIdBuffer = Shader.PropertyToID("_idBuffer");
+        // _idZIndexBuffer = Shader.PropertyToID("_zIndexBuffer");
         _idInputBuffer = Shader.PropertyToID("_inputBuffer");
         _idOutputBuffer = Shader.PropertyToID("_outputBuffer");
         _idMinBuffer = Shader.PropertyToID("_minBuffer");
         _idMaxBuffer = Shader.PropertyToID("_maxBuffer");
+        _idSortedPositionBuffer = Shader.PropertyToID("_sortedPositionBuffer");
 
         // set grid size based on rest density and bucket size
         float idealVolume = BUCKET_SIZE / _profile.restDensity;
         // grid size should be cube root of volume
         _gridSize = Mathf.Pow(idealVolume, 1f/3f);
 
-        _positionBuffer = new ComputeBuffer(MAX_PARTICLES, sizeof(float) * 4);
-        _idBuffer = new ComputeBuffer(MAX_PARTICLES, sizeof(uint));
-        _zIndexBuffer = new ComputeBuffer(MAX_PARTICLES, sizeof(uint));
+        _positionBuffers[0] = new ComputeBuffer(MAX_PARTICLES, sizeof(float) * 4);
+        _positionBuffers[1] = new ComputeBuffer(MAX_PARTICLES, sizeof(float) * 4);
+        _positionBuffers[2] = new ComputeBuffer(MAX_PARTICLES, sizeof(float) * 4);
+        // _idBuffer = new ComputeBuffer(MAX_PARTICLES, sizeof(uint));
+        // _zIndexBuffer = new ComputeBuffer(MAX_PARTICLES, sizeof(uint));
+        _idZIndexBuffer = new ComputeBuffer(MAX_PARTICLES, sizeof(uint) * 2, ComputeBufferType.Raw);
         _minBuffer = new ComputeBuffer(512, sizeof(float) * 4);
         _maxBuffer = new ComputeBuffer(512, sizeof(float) * 4);
     }
@@ -133,7 +157,7 @@ public class SPHSimulationBehaviour : MonoBehaviour
         _spawnShader.SetInts(_idDimensions,
                              new int[] { dimension.x, dimension.y, dimension.z });
         _spawnShader.SetInt(_idOffset, offset);
-        _spawnShader.SetBuffer(0, _idPositionBuffer, _positionBuffer);
+        _spawnShader.SetBuffer(0, _idPositionBuffer, inputPositionBuffer);
 
         int groupsX = Mathf.CeilToInt((float)dimension.x / kThreadsPerGroupDim);
         int groupsY = Mathf.CeilToInt((float)dimension.y / kThreadsPerGroupDim);
@@ -166,7 +190,7 @@ public class SPHSimulationBehaviour : MonoBehaviour
 
         _minMaxShader.SetInt(_idNumParticles, _numParticles);
         _minMaxShader.SetInt(_idDispatchDim, numGroups);
-        _minMaxShader.SetBuffer(0, _idInputBuffer, _positionBuffer);
+        _minMaxShader.SetBuffer(0, _idInputBuffer, inputPositionBuffer);
         _minMaxShader.SetBuffer(0, _idMinBuffer, _minBuffer);
         _minMaxShader.SetBuffer(0, _idMaxBuffer, _maxBuffer);
         _minMaxShader.Dispatch(0, numGroups, 1, 1);
@@ -188,48 +212,67 @@ public class SPHSimulationBehaviour : MonoBehaviour
 
     void InitializeParticlesIds()
     {
-        const int kThreadsPerGroup = 256;
+        const int kThreadsPerGroup = 512;
         uint numThreads = SPHMath.NearestPowerOf2((uint)_numParticles);
 
         _initializeShader.SetFloat(_idGridSize, _gridSize);
         _initializeShader.SetInt(_idNumParticles, _numParticles);
-        _initializeShader.SetBuffer(0, _idPositionBuffer, _positionBuffer);
-        _initializeShader.SetBuffer(0, _idIdBuffer, _idBuffer);
-        _initializeShader.SetBuffer(0, _idZIndexBuffer, _zIndexBuffer);
+        _initializeShader.SetBuffer(0, _idPositionBuffer, inputPositionBuffer);
+        // _initializeShader.SetBuffer(0, _idIdBuffer, _idBuffer);
+        // _initializeShader.SetBuffer(0, _idZIndexBuffer, _zIndexBuffer);
+        _initializeShader.SetBuffer(0, _idIdZIndexBuffer, _idZIndexBuffer);
         _initializeShader.SetBuffer(0, _idMinBuffer, _minBuffer);
         int groupsX = Mathf.CeilToInt((float)numThreads / kThreadsPerGroup);
 
         _initializeShader.Dispatch(0, groupsX, 1, 1);
     }
 
+    void SortParticlesIds()
+    {
+        _bitonicSort.Sort(_idZIndexBuffer, false, true, (uint)_numParticles);
+
+        const int kThreadsPerGroup = 512;
+
+        _sortShader.SetInt(_idNumParticles, _numParticles);
+        _sortShader.SetBuffer(0, _idIdZIndexBuffer, _idZIndexBuffer);
+        _sortShader.SetBuffer(0, _idPositionBuffer, inputPositionBuffer);
+        _sortShader.SetBuffer(0, _idSortedPositionBuffer, sortedPositionBuffer);
+        int groupsX = Mathf.CeilToInt((float)_numParticles / kThreadsPerGroup);
+        _sortShader.Dispatch(0, groupsX, 1, 1);
+    }
+
     #endregion
 
     #region Monobehaviour functions
 
-    // Use this for initialization
-    void Start()
+    private void Awake()
     {
         InitializeResources();
-
-        // collect all spawners
         _spawners = FindObjectsOfType<SPHSpawner>();
     }
 
+    [SerializeField]
+    bool _skipSort;
+
     void Update()
     {
-        // initialize particle id and zindex buffer
-        
+        _bitonicSort.VerifySortedness(_idZIndexBuffer);
+        _bufferIndex = (_bufferIndex + 1) % 3;
         SpawnAllParticles();
-
         ComputeMinMax();
         InitializeParticlesIds();
+        if (!_skipSort)
+            SortParticlesIds();
     }
     
     private void OnDestroy()
     {
-        _positionBuffer.Release();
-        _idBuffer.Release();
-        _zIndexBuffer.Release();
+        _positionBuffers[0].Release();
+        _positionBuffers[1].Release();
+        _positionBuffers[2].Release();
+        // _idBuffer.Release();
+        // _zIndexBuffer.Release();
+        _idZIndexBuffer.Release();
         _minBuffer.Release();
         _maxBuffer.Release();
     }
