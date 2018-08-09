@@ -12,7 +12,11 @@ cbuffer Constants : register(b0)
     uint _offset;
     float3 _boundsMin;
     float3 _boundsSize;
+    float _noiseFrequency;
+    float _time;
 }
+
+#include "Assets/NoiseShader/HLSL/SimplexNoise3D.hlsl"
 
 RWStructuredBuffer<float4> _positionBuffer;
 
@@ -21,12 +25,16 @@ void SPHSpawn (uint3 id : SV_DispatchThreadID)
 {
     if (any(id >= _dimensions)) return;
 
-    float3 pos = ((float3)id) / ((float3)_dimensions);
+    // float3 pos = ((float3)id) / ((float3)_dimensions);
+    float3 pos = (float3)id * 5678.9012;
+
+    pos = snoise_grad((pos + _time) * _noiseFrequency) * 0.1 + 0.5;
+
     pos = pos * _boundsSize + _boundsMin;
     pos = mul(_transform, float4(pos, 1)).xyz;
 
     uint index = id.x * _dimensions.y * _dimensions.z +
-                 id.y * _dimensions.z +
+                 id.y * _dimensions.z + 
                  id.z +
                  _offset;
     if (index >= MAX_PARTICLES) return;

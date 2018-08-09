@@ -23,9 +23,10 @@ public class SPHSpawner : MonoBehaviour
     {
         get
         {
-            int x = (int)(bounds.size.x * _density);
-            int y = (int)(bounds.size.y * _density);
-            int z = (int)(bounds.size.z * _density);
+            float cbrtDensity = Mathf.Pow(_density, 1f/3f);
+            int x = (int)(bounds.size.x * cbrtDensity);
+            int y = (int)(bounds.size.y * cbrtDensity);
+            int z = (int)(bounds.size.z * cbrtDensity);
             return new Vector3Int(x, y, z);
         }
     }

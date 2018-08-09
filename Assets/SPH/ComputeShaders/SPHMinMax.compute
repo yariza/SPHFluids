@@ -123,5 +123,6 @@ void SPHMinMax(uint tid : SV_GroupIndex,
     }
     if (tid == 0) {
         _minBuffer[groupIdx.x] = sMinData[0];
+        _maxBuffer[groupIdx.x] = sMaxData[0];
     }
 }

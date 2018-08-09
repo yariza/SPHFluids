@@ -52,5 +52,10 @@ public static class SPHMath
         return (int)(x & 0x0000003f);
     }
 
+    public static int NextMultipleOf(int num, int alignment)
+    {
+        return (((num)/(alignment) + (((num)%(alignment)==0)?0:1))*(alignment));
+    }
+
     private const int WORDBITS = 32;
 }

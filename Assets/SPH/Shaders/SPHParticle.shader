@@ -24,6 +24,9 @@ Shader "SPHParticle/Unlit"
             
             #include "UnityCG.cginc"
             
+            #define MAX_BUCKETS 1 << 21
+            #define BUCKET_MASK ((MAX_BUCKETS) - 1)
+
             // Pixel shader input
             struct PS_INPUT
             {
@@ -33,7 +36,9 @@ Shader "SPHParticle/Unlit"
             
             StructuredBuffer<float4> _positionBuffer;
             // StructuredBuffer<int> _zIndexBuffer;
-            ByteAddressBuffer _idZIndexBuffer;
+            // ByteAddressBuffer _idZIndexBuffer;
+            StructuredBuffer<uint> _idZIndexBuffer;
+            StructuredBuffer<uint> _bucketCountBuffer;
             uniform float4 _color1;
             uniform float4 _color2;
             uniform float _scale;
@@ -55,29 +60,36 @@ Shader "SPHParticle/Unlit"
                 // );
                 float4 color = float4(0,0,0,0);
                 uint index = instance_id;
-                if (index >= 0)
+                // if (index - _threshold >= 0)
+                // {
+                //     uint curZ = _idZIndexBuffer.Load(index * 8 + 4);
+                //     uint prevZ = _idZIndexBuffer.Load((index - _threshold) * 8 + 4);
+                //     if (curZ < prevZ)
+                //     {
+                //         // this is an incorrect color
+                //         color = float4(1,0,0,1);
+                //     }
+                //     else
+                //     {
+                //         color = float4(0,0,1,1);
+                //     }
+                // }
+                uint zIndex = _idZIndexBuffer[index] & BUCKET_MASK;
+                uint bucketCount = _bucketCountBuffer[zIndex];
+                if (bucketCount > _threshold)
                 {
-                    uint curZ = _idZIndexBuffer.Load(index * 8);
-                    // uint prevZ = _idZIndexBuffer.Load((index - _threshold) * 8);
-                    if (curZ != index)
-                    {
-                        // this is an incorrect color
-                        color = float4(1,0,0,1);
-                    }
-                    else
-                    {
-                        color = float4(0,0,1,1);
-                    }
+                    color = lerp(float4(1,0,0,1), float4(0,0,1,1), ((float)bucketCount) / 256.0);
                 }
-                o.color = color;
-                o.position = UnityObjectToClipPos(float4(
-                    frac((float)index / 2048) * 4,
-                    floor((float)index / 2048) / 2048 * 4,
-                    0,
-                    1));
+                // color = lerp(_color1, _color2, (float)zIndex / (MAX_BUCKETS));
+                // o.color = color;
+                // o.position = UnityObjectToClipPos(float4(
+                //     frac((float)index / 2048) * 4,
+                //     floor((float)index / 2048) / 2048 * 4,
+                //     0,
+                //     1));
 
                 // o.color = lerp(_color1, float4(0,0,0,0), step(_threshold, zIndex));
-                // o.position = UnityObjectToClipPos(float4(_positionBuffer[instance_id].xyz, 1.0));
+                o.position = UnityObjectToClipPos(float4(_positionBuffer[instance_id].xyz, 1.0));
 
                 return o;
             }

@@ -1,0 +1,14 @@
+#pragma kernel SPHBucketInit
+
+#define THREAD_X 512
+
+RWStructuredBuffer<uint> _bucketOffsetBuffer;
+
+[numthreads(THREAD_X, 1, 1)]
+void SPHBucketInit (
+	uint3 id : SV_DispatchThreadID,
+	uint3 tid : SV_GroupThreadID)
+{
+    uint idx = id.x;
+    _bucketOffsetBuffer[idx] = 0;
+}

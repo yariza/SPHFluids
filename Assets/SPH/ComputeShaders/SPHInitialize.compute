@@ -2,7 +2,6 @@
 
 #include "SPHMortonCode.cginc"
 
-#define MAX_PARTICLES 1 << 20
 #define THREAD_X 512
 
 cbuffer Constants : register(b0)
@@ -15,7 +14,8 @@ StructuredBuffer<float4> _positionBuffer;
 
 // uint2 buffer of interleaved id and zIndex.
 // sorted by zIndex later on.
-RWByteAddressBuffer _idZIndexBuffer;
+// RWByteAddressBuffer _idZIndexBuffer;
+RWStructuredBuffer<uint> _idZIndexBuffer;
 // RWStructuredBuffer<uint> _idBuffer;
 // RWStructuredBuffer<int> _zIndexBuffer;
 StructuredBuffer<float4> _minBuffer;
@@ -51,5 +51,6 @@ void SPHInitialize (
 	// _zIndexBuffer[idx] = zIndex;
 	float3 position = _positionBuffer[idx].xyz;
 	zIndex = getZIndex(position);
-	_idZIndexBuffer.Store2(idx*8, uint2(idx, zIndex));
+	// _idZIndexBuffer.Store2(idx*8, uint2(idx, zIndex));
+	_idZIndexBuffer[idx] = zIndex;
 }

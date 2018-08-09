@@ -188,6 +188,7 @@ GameObject:
   - component: {fileID: 282840814}
   - component: {fileID: 282840813}
   - component: {fileID: 282840811}
+  - component: {fileID: 282840812}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -202,6 +203,26 @@ AudioListener:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 282840810}
   m_Enabled: 1
+--- !u!114 &282840812
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 282840810}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d85e50403db274e7b8765a9d329bf9aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _simulation: {fileID: 1248459694}
+  _material: {fileID: 0}
+  _bucketMaterial: {fileID: 0}
+  _raymarchShader: {fileID: 4800000, guid: c26c4d9a863394fabb5e57ceb7d9e6ec, type: 3}
+  _cubeMesh: {fileID: 0}
+  _maxVoxels: 20
+  _imageEffect: 1
+  _metaballThreshold: 0.644
+  _precision: 4.49
 --- !u!20 &282840813
 Camera:
   m_ObjectHideFlags: 0
@@ -245,7 +266,7 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 282840810}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -15.51}
+  m_LocalPosition: {x: 0, y: 0, z: -4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 903203254}
@@ -281,7 +302,7 @@ MonoBehaviour:
   _bounds:
     m_Center: {x: 0, y: 0, z: 0}
     m_Extent: {x: 2.7, y: 3.18, z: 4.1}
-  _density: 10
+  _density: 0.1
   _debug: 0
 --- !u!4 &806170413
 Transform:
@@ -353,7 +374,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1248459695}
   - component: {fileID: 1248459694}
-  - component: {fileID: 1248459696}
   m_Layer: 0
   m_Name: SPH
   m_TagString: Untagged
@@ -374,13 +394,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _profile: {fileID: 11400000, guid: adc6426ad67a244f98f97b964ec01541, type: 2}
   _spawnShader: {fileID: 7200000, guid: c3a2992df671349c1afd8df886c2d6be, type: 3}
-  _initializeShader: {fileID: 7200000, guid: 3e3c76240ab1242abbaca244306f711f, type: 3}
   _minMaxShader: {fileID: 7200000, guid: d29ed91550af34f0fa759c3116c93536, type: 3}
   _minShader: {fileID: 7200000, guid: 1be6eba9d42b94d959ba488bfa875755, type: 3}
   _maxShader: {fileID: 7200000, guid: d80aa12f3656742a0a1e3d7d07d6c920, type: 3}
   _sortShader: {fileID: 7200000, guid: 246ac068de5df468da71b1d86915d8ef, type: 3}
-  _bitonicSort: {fileID: 11400000, guid: 950d8fc096c1e4ce0921bbf9428d4f7c, type: 2}
-  _skipSort: 0
+  _bucketInitShader: {fileID: 7200000, guid: 942f8f1ed76b5431e90eff50dc53752c, type: 3}
+  _bucketCountShader: {fileID: 7200000, guid: c281f1fb1ce6f4f3bb36ae932a245372, type: 3}
+  _bucketGroupInitShader: {fileID: 7200000, guid: 76a92ffd669a3487eb9f8e094cf52418,
+    type: 3}
+  _voxelDilateShader: {fileID: 7200000, guid: 0de83e657ae7147c6a177a81421680ab, type: 3}
+  _scanProfile: {fileID: 11400000, guid: 337ae368d34504786b4b9b70be196af7, type: 2}
+  _noiseFrequency: 0.05
 --- !u!4 &1248459695
 Transform:
   m_ObjectHideFlags: 0
@@ -394,18 +418,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1248459696
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 1248459693}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d85e50403db274e7b8765a9d329bf9aa, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _material: {fileID: 2100000, guid: 25e6de9bcefe24b0eb5cc380fe9ce33a, type: 2}
 --- !u!1 &1300323038
 GameObject:
   m_ObjectHideFlags: 0

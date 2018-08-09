@@ -1,0 +1,45 @@
+#pragma kernel SPHBucketCount
+
+#include "SPHMortonCode.cginc"
+
+#define THREAD_X 512
+#define BUCKET_SIZE 8
+
+cbuffer Constants : register(b0)
+{
+	float _gridSize;
+    uint _numParticles;
+}
+
+StructuredBuffer<float4> _minBuffer;
+StructuredBuffer<float4> _positionBuffer;
+RWStructuredBuffer<uint> _zIndexBuffer;
+RWStructuredBuffer<uint> _bucketOffsetBuffer;
+RWStructuredBuffer<uint> _bucketBuffer;
+
+uint getZIndex(float3 position)
+{
+	uint3 coord = asuint((int3)floor((position - _minBuffer[0].xyz) / _gridSize));
+	coord += uint3(1,1,1); // padding
+	return mortonCode(coord);
+}
+
+[numthreads(THREAD_X, 1, 1)]
+void SPHBucketCount (
+	uint3 id : SV_DispatchThreadID,
+	uint3 tid : SV_GroupThreadID)
+{
+	uint idx = id.x;
+	if (idx >= _numParticles) return;
+
+	float3 position = _positionBuffer[idx].xyz;
+	uint zIndex = getZIndex(position);
+
+    uint count;
+    InterlockedAdd(_bucketOffsetBuffer[zIndex], 1, count);
+
+	uint slot = BUCKET_SIZE * zIndex + count;
+
+    _zIndexBuffer[idx] = slot;
+	_bucketBuffer[slot] = idx;
+}

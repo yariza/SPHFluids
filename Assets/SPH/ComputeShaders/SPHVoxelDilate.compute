@@ -1,0 +1,44 @@
+#pragma kernel SPHVoxelDilate
+
+#define THREAD_X 512
+
+StructuredBuffer<uint> _bucketOffsetBuffer;
+RWStructuredBuffer<uint> _voxelDilateBuffer;
+
+#include "SPHMortonCode.cginc"
+
+[numthreads(THREAD_X, 1, 1)]
+void SPHVoxelDilate(
+	uint3 id : SV_DispatchThreadID,
+	uint3 tid : SV_GroupThreadID)
+{
+    uint idx = id.x;
+
+    uint3 coord = mortonCodeDecode(idx);
+    bool occupied = false;
+
+    [unroll]
+    for (int dx = -1; dx <= 1; dx++)
+    {
+        int x = coord.x + dx;
+
+        [unroll]
+        for (int dy = -1; dy <= 1; dy++)
+        {
+            int y = coord.y + dy;
+            
+            [unroll]
+            for (int dz = -1; dz <= 1; dz++)
+            {
+                int z = coord.z + dz;
+                int3 otherCoord = int3(x, y, z);
+
+                uint otherId = mortonCode((uint3)otherCoord);
+                uint value = _bucketOffsetBuffer[otherId];
+                occupied = occupied || (value != 0);
+            }
+        }
+    }
+
+    _voxelDilateBuffer[idx] = occupied ? 1 : 0;
+}

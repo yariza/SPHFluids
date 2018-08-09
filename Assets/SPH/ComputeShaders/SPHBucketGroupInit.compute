@@ -1,0 +1,29 @@
+#pragma kernel SPHBucketGroupInit
+
+#define THREAD_X 512
+#define MAX_BUCKETS (1 << 21)
+#define BUCKET_SIZE 8
+#define MAX_BUCKET_GROUPS (MAX_BUCKETS / BUCKET_SIZE)
+#define BUCKET_MASK ((MAX_BUCKETS) - 1)
+
+StructuredBuffer<uint> _bucketOffsetBuffer;
+RWStructuredBuffer<uint> _bucketGroupOffsetBuffer;
+
+[numthreads(THREAD_X, 1, 1)]
+void SPHBucketGroupInit (
+	uint3 id : SV_DispatchThreadID,
+	uint3 tid : SV_GroupThreadID)
+{
+    uint idx = id.x;
+    bool write = false;
+    uint bucketIndex = idx * BUCKET_SIZE;
+
+    [unroll]
+    for (uint i = 0; i < BUCKET_SIZE; i++)
+    {
+        write = write || (_bucketOffsetBuffer[bucketIndex] != 0);
+        bucketIndex++;
+    }
+
+    _bucketGroupOffsetBuffer[idx] = write ? 1 : 0;
+}

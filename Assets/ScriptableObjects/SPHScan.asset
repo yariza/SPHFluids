@@ -8,7 +8,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 86ce214823a134d1aa823118bca26cc6, type: 3}
-  m_Name: SPHSimulation
+  m_Script: {fileID: 11500000, guid: f31d18633d160472a97df5b6daf46c60, type: 3}
+  m_Name: SPHScan
   m_EditorClassIdentifier: 
-  _restDensity: 10
+  _scanShader: {fileID: 7200000, guid: 9023ce4777f3d43afbeed0518795440a, type: 3}

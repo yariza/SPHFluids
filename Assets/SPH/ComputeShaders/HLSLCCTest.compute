@@ -1,0 +1,35 @@
+#pragma kernel HLSLCCTest
+#pragma kernel HLSLCCTest2
+
+RWStructuredBuffer<uint> _outputBuffer;
+
+int someFunction(uint m)
+{
+    uint x = m & 0x9249249;
+    x = (x ^ (x >> 2)) & 0x30c30c3;
+    x = (x ^ (x >> 4)) & 0x0300f00f;
+    x = (x ^ (x >> 8)) & 0x30000ff;
+    x = (x ^ (x >> 16)) & 0x000003ff;
+    int y = (int)x;
+    return ((y - 1) < 0) ? 1 : 0;
+}
+
+[numthreads(512,1,1)]
+void HLSLCCTest(
+   	uint3 id : SV_DispatchThreadID,
+	uint3 tid : SV_GroupThreadID)
+{
+    int y = someFunction(id.x);
+
+    _outputBuffer[id.x] = y;
+}
+
+[numthreads(512,1,1)]
+void HLSLCCTest2(
+   	uint3 id : SV_DispatchThreadID,
+	uint3 tid : SV_GroupThreadID)
+{
+    int y = someFunction(0);
+
+    _outputBuffer[id.x] = y;
+}
