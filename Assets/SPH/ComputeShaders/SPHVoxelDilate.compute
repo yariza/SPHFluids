@@ -4,6 +4,7 @@
 
 StructuredBuffer<uint> _bucketOffsetBuffer;
 RWStructuredBuffer<uint> _voxelDilateBuffer;
+RWStructuredBuffer<uint> _voxelDilateCounterBuffer;
 
 #include "SPHMortonCode.cginc"
 
@@ -41,4 +42,9 @@ void SPHVoxelDilate(
     }
 
     _voxelDilateBuffer[idx] = occupied ? 1 : 0;
+    if (occupied)
+    {
+        uint count = _voxelDilateCounterBuffer.IncrementCounter();
+        _voxelDilateCounterBuffer[count] = idx;
+    }
 }

@@ -104,6 +104,12 @@ public class SPHSimulationBehaviour : MonoBehaviour
     {
         get { return _voxelDilateBuffer; }
     }
+    ComputeBuffer _voxelDilateCounterBuffer;
+    public ComputeBuffer voxelDilateCounterBuffer
+    {
+        get { return _voxelDilateCounterBuffer; }
+    }
+
     ComputeBuffer _voxelFacesCountBuffer;
     ComputeBuffer _voxelFacesOffsetBuffer;
     ComputeBuffer _voxelFaceBuffer;
@@ -132,6 +138,7 @@ public class SPHSimulationBehaviour : MonoBehaviour
     int _idBucketGroupOffsetBuffer;
 
     int _idVoxelDilateBuffer;
+    int _idVoxelDilateCounterBuffer;
 
     int _idNoiseFrequency;
     int _idTime;
@@ -172,6 +179,7 @@ public class SPHSimulationBehaviour : MonoBehaviour
         _idBucketGroupOffsetBuffer = Shader.PropertyToID("_bucketGroupOffsetBuffer");
 
         _idVoxelDilateBuffer = Shader.PropertyToID("_voxelDilateBuffer");
+        _idVoxelDilateCounterBuffer = Shader.PropertyToID("_voxelDilateCounterBuffer");
 
         _idNoiseFrequency = Shader.PropertyToID("_noiseFrequency");
         _idTime = Shader.PropertyToID("_time");
@@ -199,6 +207,8 @@ public class SPHSimulationBehaviour : MonoBehaviour
 
         // 8 MB
         _voxelDilateBuffer = new ComputeBuffer(MAX_BUCKETS, sizeof(uint));
+        // 8 MB
+        _voxelDilateCounterBuffer = new ComputeBuffer(MAX_BUCKETS, sizeof(uint), ComputeBufferType.Counter);
         // 8 MB
         // _voxelFacesCountBuffer = new ComputeBuffer(MAX_BUCKETS, sizeof(uint));
         // 8 MB
@@ -394,13 +404,14 @@ public class SPHSimulationBehaviour : MonoBehaviour
     //     _bucketCountShader.Dispatch(0, groupsX, 1, 1);
     // }
 
-    void DilateVoxels()
+    public void DilateVoxels()
     {
         const int kThreadsPerGroup = 512;
 
         int groups = MAX_BUCKETS / kThreadsPerGroup;
         _voxelDilateShader.SetBuffer(0, _idBucketOffsetBuffer, _bucketOffsetBuffer);
         _voxelDilateShader.SetBuffer(0, _idVoxelDilateBuffer, _voxelDilateBuffer);
+        _voxelDilateShader.SetBuffer(0, _idVoxelDilateCounterBuffer, _voxelDilateCounterBuffer);
         _voxelDilateShader.Dispatch(0, groups, 1, 1);
     }
 
@@ -419,6 +430,9 @@ public class SPHSimulationBehaviour : MonoBehaviour
 
     void Update()
     {
+        // reset counter
+        _voxelDilateCounterBuffer.SetCounterValue(0);
+
         // _bufferIndex = (_bufferIndex + 1) % NUM_POSITION_BUFFERS;
         SpawnAllParticles();
         ComputeMinMax();
@@ -478,6 +492,7 @@ public class SPHSimulationBehaviour : MonoBehaviour
         _bucketOffsetBuffer.Release();
         // _bucketGroupOffsetBuffer.Release();
         _voxelDilateBuffer.Release();
+        _voxelDilateCounterBuffer.Release();
     }
 
     #endregion

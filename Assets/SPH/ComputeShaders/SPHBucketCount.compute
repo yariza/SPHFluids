@@ -39,7 +39,9 @@ void SPHBucketCount (
     InterlockedAdd(_bucketOffsetBuffer[zIndex], 1, count);
 
 	uint slot = BUCKET_SIZE * zIndex + count;
-
-    _zIndexBuffer[idx] = slot;
-	_bucketBuffer[slot] = idx;
+	if (count <= BUCKET_SIZE)
+	{
+		_bucketBuffer[slot] = idx;
+	}
+	_zIndexBuffer[idx] = slot;
 }

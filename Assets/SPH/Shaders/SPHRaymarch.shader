@@ -147,7 +147,7 @@
 			void calculateBlob(
 				float3 pos,
 				float4 blob,
-				inout float m,
+				inout bool m,
 				inout float p,
 				inout float dmin,
 				inout float h
@@ -159,7 +159,7 @@
 				{
 					float x = db/blob.w;
 					p += 1.0 - x*x*x*(x*(x*6.0-15.0)+10.0);
-					m += 1.0;
+					m = true;
 					h = max( h, 0.5333*blob.w );
 				}
 				else // bouncing sphere distance
@@ -168,8 +168,20 @@
 				}
 			}
 
+			void calculateBlobNormal(
+				float3 pos,
+				float4 blob,
+				inout float3 nor
+			)
+			{
+				float db = length( blob.xyz - pos );
+				float x = clamp( db/blob.w, 0.0, 1.0 );
+				float p = x*x*(30.0*x*x - 60.0*x + 30.0);
+				nor += normalize( pos - blob.xyz ) * p / blob.w;
+			}
+
 			void iterateMetaballs(
-				inout float m,
+				inout bool m,
 				inout float p,
 				inout float dmin,
 				inout float h,
@@ -201,9 +213,39 @@
 				}
 			}
 
+			void iterateMetaballsNormal(
+				inout float3 nor,
+				float3 pos, int3 voxel
+			)
+			{
+				[unroll]
+				for (int dx = -1; dx <= 1; dx++)
+				{
+					[unroll]
+					for (int dy = -1; dy <= 1; dy++)
+					{
+						[unroll]
+						for (int dz = -1; dz <= 1; dz++)
+						{
+							int3 otherVoxel = voxel + int3(dx, dy, dz);
+							uint bucket;
+							uint count = getBucketCount(otherVoxel, bucket);
+
+							for (uint i = 0; i < count; i++)
+							{
+								float4 blob = getBlob(bucket, i);
+								calculateBlobNormal(
+									pos, blob, nor
+								);
+							}
+						}
+					}
+				}
+			}
+
 			float sdMetaballs(float3 pos, int3 voxel)
 			{
-				float m = 0.0;
+				bool m = false;
 				float p = 0.0;
 				float dmin = 1e20;
 
@@ -213,13 +255,22 @@
 
 				float d = dmin + 0.1;
 
-				if (m > 0.2)
+				if (m)
 				{
 					float th = _metaballThreshold;
 					d = h * (th - p);
 				}
 
 				return d;
+			}
+
+			float3 norMetaballs(float3 pos, int3 voxel)
+			{
+				float3 nor = float3(0.0, 0.0, 0.0001);
+
+				iterateMetaballsNormal(nor, pos, voxel);
+
+				return normalize(nor);
 			}
 
 			float map(float3 pos, int3 voxel)
@@ -233,20 +284,24 @@
 				float h = precis*2.0;
 				float t = 0.0;
 
+				Intersection s;
+
 				for( uint i=0; i<75; i++ )
 				{
-					if( h<precis||t>maxd ) break;
+					if( (h)<precis||t>maxd )
+					{
+						break;
+					}
 					t += h;
 					h = map( ro+rd*t, voxel );
 				}
 
-				Intersection s;
 				s.t = t;
 				s.intersect = (t <= maxd);
 				return s;
 			}
 
-			Intersection processVoxel(int3 voxel, float3 pos, float maxd, float3 dir, Grid grid, inout float value, inout float voxelCount)
+			Intersection processVoxel(int3 voxel, float3 pos, float maxd, float3 dir, Grid grid, /*inout float value,*/ inout float voxelCount)
 			{
 				uint m = mortonCode((uint3)voxel);
 				uint count = _voxelDilateBuffer[m];
@@ -284,12 +339,12 @@
 				}
 			}
 
-			void voxelTraversal(float3 rayStart, float3 rayEnd, float3 rayDir, Grid grid, uint maxCount, out float value)
+			bool voxelTraversal(float3 rayStart, float3 rayEnd, float3 rayDir, Grid grid, uint maxCount, out float3 pos, out int3 curVoxel, out float value)
 			{
 				value = 0.0;
 				uint count = 0;
 
-				int3 curVoxel = pos2Voxel(rayStart, grid);
+				curVoxel = pos2Voxel(rayStart, grid);
 				int3 lastVoxel = pos2Voxel(rayEnd, grid);
 
 				float3 ray = (rayEnd - rayStart);
@@ -311,23 +366,26 @@
 				float3 tDelta = float3(grid.size, grid.size, grid.size) * invRay * step;
 
 				tMax -= (ray < 0) * tDelta;
+				// int3 refVoxel = curVoxel + (ray < 0) * 1;
 
-				float3 pos = rayStart;
+				pos = rayStart;
 
 				Intersection i;
 				uint voxelCount = 0;
 
-				i = processVoxel(curVoxel, pos, _gridSize * 2, rayDir, grid, value, voxelCount);
+				i = processVoxel(curVoxel, pos, _gridSize * 2, rayDir, grid, voxelCount);
 				count++;
 
 				if (i.intersect)
 				{
 					voxelCount++;
-					// value = 20.0;
+					// value = i.t;
 					pos += rayDir * i.t;
-					value = length(pos - _WorldSpaceCameraPos);
-					return;
+					// value = length(pos - _WorldSpaceCameraPos);
+					return true;
 				}
+				float3 nextPos;
+				int3 nextVoxel = curVoxel;
 
 				// bool exit = false;
 				while (any(lastVoxel != curVoxel) && count < maxCount && voxelCount < _maxVoxels)
@@ -348,14 +406,20 @@
 					{
 						if (tMax.x < tMax.z)
 						{
-							pos = tMax.x * ray.x * rayNormX + rayStart;
+							// pos = (refVoxel.x - rayStart.x) * rayNormX + rayStart;
+							// refVoxel.x += step.x;
+							nextPos = tMax.x * ray.x * rayNormX + rayStart;
+							// nextVoxel.x += step.x;
 							curVoxel.x += step.x;
 							tMax.x += tDelta.x;
 							// maxd = tDelta.x * rayNormLen.x;
 						}
 						else
 						{
-							pos = tMax.z * ray.z * rayNormZ + rayStart;
+							// pos = (refVoxel.z - rayStart.z) * rayNormZ + rayStart;
+							// refVoxel.z += step.z;
+							nextPos = tMax.z * ray.z * rayNormZ + rayStart;
+							// nextVoxel.z += step.z;
 							curVoxel.z += step.z;
 							tMax.z += tDelta.z;
 							// maxd = tDelta.z * rayNormLen.z;
@@ -365,14 +429,20 @@
 					{
 						if (tMax.y < tMax.z)
 						{
-							pos = tMax.y * ray.y * rayNormY + rayStart;
+							// pos = (refVoxel.y - rayStart.y) * rayNormY + rayStart;
+							// refVoxel.y += step.y;
+							nextPos = tMax.y * ray.y * rayNormY + rayStart;
+							// nextVoxel.y += step.y;
 							curVoxel.y += step.y;
 							tMax.y += tDelta.y;
 							// maxd = tDelta.y * rayNormLen.y;
 						}
 						else
 						{
-							pos = tMax.z * ray.z * rayNormZ + rayStart;
+							// pos = (refVoxel.z - rayStart.z) * rayNormZ + rayStart;
+							// refVoxel.z += step.z;
+							nextPos = tMax.z * ray.z * rayNormZ + rayStart;
+							// nextVoxel.z += step.z;
 							curVoxel.z += step.z;
 							tMax.z += tDelta.z;
 							// maxd = tDelta.z * rayNormLen.z;
@@ -380,26 +450,30 @@
 					}
 
 					maxd = _gridSize * 2;
-					i = processVoxel(curVoxel, pos, maxd, rayDir, grid, value, voxelCount);
+					i = processVoxel(curVoxel, pos, maxd, rayDir, grid, voxelCount);
 					count++;
 
 					if (i.intersect)
 					{
 						// voxelCount++;
 						// value = 20.0;
+						// value = i.t;
 						pos += rayDir * i.t;
-						value = length(pos - _WorldSpaceCameraPos);
-						return;
+						// value = length(pos - _WorldSpaceCameraPos);
+						return true;
 					}
 					// if (exit) break;
 
 					// if (voxelCount >= _maxVoxels) break;
 
 					// if (all(lastVoxel == curVoxel) || count >= 20) exit = true;
+					pos = nextPos;
+					curVoxel = nextVoxel;
 				}
 
 				// if (tmat.y > -0.5) value = 20.0;
 				// value = voxelCount;
+				return false;
 			}
 
 			fixed4 frag (v2f i) : SV_Target
@@ -424,15 +498,35 @@
 				{
 					float3 rayStart = r.dir * tMin + r.origin;
 					float3 rayEnd = r.dir * tMax + r.origin;
+					// float value;
+					float3 pos;
+					int3 voxel;
 					float value;
 
 					// value = 20.0;
 
-					voxelTraversal(rayStart, rayEnd, r.dir, grid, 20, value);
+					intersect = voxelTraversal(rayStart, rayEnd, r.dir, grid, 20, pos, voxel, value);
 					// value = length(rayStart - r.origin) + 1.0;
 
-					float3 col = lerp(float3(0,0,0), float3(1,0,0), saturate(value / 10));
-					return fixed4(col, 1.0);
+					if (intersect)
+					{
+						// float3 ray = normalize(pos - _WorldSpaceCameraPos);
+						// ray = ray * 0.5 + 0.5;
+						// return fixed4(ray.xyz, 1.0);
+						// float3 nor = norMetaballs(pos, voxel);
+						// float3 nor = pos % 1.0;
+						// nor = nor * 0.5 + 0.5;
+						// return fixed4(nor, 1.0);
+						float len = length(pos - _WorldSpaceCameraPos) / 20.0;
+						return fixed4(len, len, len, 1.0);
+						// float len = value / 20.0f;
+						// return fixed4(lerp(float3(1,0,0), float3(1,1,1), len), 1.0);
+					}
+
+					fixed4 bg = tex2D(_MainTex, i.uv);
+					return fixed4(bg.rgb, 1.0);
+					// float3 col = lerp(float3(0,0,0), float3(1,0,0), saturate(value / 10));
+					// return fixed4(col, 1.0);
 				}
 				else
 				{
